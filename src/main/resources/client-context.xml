@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jaxws="http://cxf.apache.org/jaxws"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://cxf.apache.org/core http://cxf.apache.org/schemas/core.xsd
+		http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd
+		http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring-2.8.2.xsd
+">
+
+	<jaxws:client id="client"
+		xmlns:ride="http://restaurant-ride.kolinek.org"
+		serviceName="ride:RideService"
+		endpointName="ride:RideServiceEndpoint" address="camel://direct:RideServiceClient"
+		serviceClass="org.kolinek.restaurantride.RideService">
+	</jaxws:client>
+	
+		<!-- Camel transport for CXF -->
+	<bean class="org.apache.camel.component.cxf.transport.CamelTransportFactory">
+		<property name="bus" ref="cxf" />
+		<property name="camelContext" ref="camelContext" />
+		<property name="transportIds">
+			<list>
+				<value>http://cxf.apache.org/transports/camel</value>
+			</list>
+		</property>
+	</bean>
+
+	<camelContext id="camelContext" trace="true" xmlns="http://camel.apache.org/schema/spring">
+		<route>
+			<from uri="direct:RideServiceClient" />
+			<convertBodyTo type="java.lang.String" charset="utf-8"/>
+			<to uri="log:org.kolinek.restaurantride.in" />
+			<to uri="jms://topic:RideService.Entry" />
+			<to uri="log:org.kolinek.restaurantride.out" />
+		</route>
+	</camelContext>
+	
+    <bean id="jms" class="org.apache.camel.component.jms.JmsComponent">
+		<property name="connectionFactory" ref="amqJmsConnectionFactory" />
+	</bean>
+
+	<!-- A config for Apache ActiveMQ -->
+	<bean id="amqJmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL" value="tcp://localhost:61616" />
+	</bean>
+
+</beans>
